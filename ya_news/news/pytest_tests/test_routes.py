@@ -3,87 +3,89 @@ from http import HTTPStatus
 
 from django.urls import reverse
 
+pytestmark = pytest.mark.django_db
 
-@pytest.mark.django_db
+URL_HOME = reverse('news:home')
+URL_LOGIN = reverse('users:login')
+URL_SIGNUP = reverse('users:signup')
+URL_LOGOUT = reverse('users:logout')
+
+
+@pytest.fixture
+def detail_url(news):
+    return reverse('news:detail', args=(news.id,))
+
+
+@pytest.fixture
+def edit_url(comment):
+    return reverse('news:edit', args=(comment.id,))
+
+
+@pytest.fixture
+def delete_url(comment):
+    return reverse('news:delete', args=(comment.id,))
+
+
+@pytest.fixture
+def anon_redirect_urls(comment):
+    """Словарь ожидаемых редиректов для анонима."""
+    login = reverse('users:login')
+    return {
+        'edit': f"{login}?next={reverse('news:edit', args=(comment.id,))}",
+        'delete': f"{login}?next={reverse('news:delete', args=(comment.id,))}",
+    }
+
+
 @pytest.mark.parametrize(
-    'name,args_key',
-    (
-        ('news:home', None),
-        ('news:detail', 'news'),
-        ('users:login', None),
-        ('users:signup', None),
-    )
+    'url_fixture_name,client_fixture_name,expected_status',
+    [
+        ('URL_HOME', 'client', HTTPStatus.OK),
+        ('detail_url', 'client', HTTPStatus.OK),
+        ('URL_LOGIN', 'client', HTTPStatus.OK),
+        ('URL_SIGNUP', 'client', HTTPStatus.OK),
+        ('edit_url', 'author_client', HTTPStatus.OK),
+        ('edit_url', 'reader_client', HTTPStatus.NOT_FOUND),
+        ('delete_url', 'author_client', HTTPStatus.OK),
+        ('delete_url', 'reader_client', HTTPStatus.NOT_FOUND),
+    ],
 )
-def test_pages_availability(client, setup_data, name, args_key):
-    """Главная, новость, вход и регистрация доступны анониму (статус 200)."""
-    if args_key:
-        obj = setup_data[args_key]
-        url = reverse(name, args=(obj.id,))
+def test_pages_availability_and_permissions(
+    request, url_fixture_name, client_fixture_name, expected_status
+):
+    """Единый тест для проверки статус-кодов всех страниц."""
+    if url_fixture_name.startswith('URL_'):
+        url = globals()[url_fixture_name]
     else:
-        url = reverse(name)
+        url = request.getfixturevalue(url_fixture_name)
+    client = request.getfixturevalue(client_fixture_name)
     response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
+    assert response.status_code == expected_status
 
 
-@pytest.mark.django_db
 def test_logout_page_availability(client):
     """Страница выхода доступна анониму."""
-    url = reverse('users:logout')
-    response = client.get(url)
+    response = client.get(URL_LOGOUT)
     allowed_statuses = (
         HTTPStatus.OK,
         HTTPStatus.FOUND,
         HTTPStatus.METHOD_NOT_ALLOWED,
     )
-    assert response.status_code in allowed_statuses, (
-        f"Страница выхода вернула статус {response.status_code}, "
-        f"ожидался один из: {allowed_statuses}"
-    )
+    assert response.status_code in allowed_statuses
 
 
-@pytest.mark.django_db
 @pytest.mark.parametrize(
-    'user_key,expected_status',
-    (
-        ('author', HTTPStatus.OK),
-        ('reader', HTTPStatus.NOT_FOUND),
-    )
-)
-@pytest.mark.parametrize(
-    'url_name',
-    ('news:edit', 'news:delete')
-)
-def test_comment_edit_delete_permissions(
-    client, setup_data, user_key, expected_status, url_name
-):
-    """
-    Автор может редактировать/удалять комментарий.
-    Другой пользователь получает ошибку 404.
-    """
-    user = setup_data[user_key]
-    comment = setup_data['comment']
-    client.force_login(user)
-    url = reverse(url_name, args=(comment.id,))
-    response = client.get(url)
-    assert response.status_code == expected_status
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    'url_name',
-    ('news:edit', 'news:delete')
+    'url_fixture_name,redirect_key',
+    [
+        ('edit_url', 'edit'),
+        ('delete_url', 'delete'),
+    ],
 )
 def test_anonymous_redirect_on_comment_actions(
-    client, setup_data, url_name
+    request, client, url_fixture_name, redirect_key, anon_redirect_urls
 ):
-    """
-    Анонимный пользователь перенаправляется на страницу логина
-    при попытке редактировать или удалить комментарий.
-    """
-    comment = setup_data['comment']
-    login_url = reverse('users:login')
-    url = reverse(url_name, args=(comment.id,))
-    expected_redirect = f'{login_url}?next={url}'
+    """Аноним перенаправляется на логин при действиях с комментарием."""
+    url = request.getfixturevalue(url_fixture_name)
+    expected_redirect = anon_redirect_urls[redirect_key]
     response = client.get(url)
     assert response.status_code == HTTPStatus.FOUND
     assert response.url == expected_redirect

@@ -4,56 +4,47 @@ from django.urls import reverse
 
 from news.forms import CommentForm
 
+pytestmark = pytest.mark.django_db
 
-@pytest.mark.django_db
-class TestHomePage:
-    """Тесты контента главной страницы."""
-
-    def test_news_count(self, client, many_news):
-        """На главной странице не более 10 новостей."""
-        url = reverse('news:home')
-        response = client.get(url)
-        object_list = response.context['object_list']
-        assert object_list.count() == settings.NEWS_COUNT_ON_HOME_PAGE
-
-    def test_news_order(self, client, many_news):
-        """Новости отсортированы по убыванию даты (новые сверху)."""
-        url = reverse('news:home')
-        response = client.get(url)
-        object_list = response.context['object_list']
-        dates = [news.date for news in object_list]
-        sorted_dates = sorted(dates, reverse=True)
-        assert dates == sorted_dates
+URL_HOME = reverse('news:home')
 
 
-@pytest.mark.django_db
-class TestDetailPage:
-    """Тесты контента страницы отдельной новости."""
+@pytest.fixture
+def detail_url(news):
+    """Фикстура для URL страницы детали новости."""
+    return reverse('news:detail', args=(news.id,))
 
-    def test_comments_order(self, client, news_with_comments):
-        """Комментарии отсортированы по времени создания (возрастание)."""
-        news_item = news_with_comments['news']
-        url = reverse('news:detail', args=(news_item.id,))
-        response = client.get(url)
-        news_obj = response.context['news']
-        comments_qs = news_obj.comment_set.all()
-        created_dates = [c.created for c in comments_qs]
-        sorted_dates = sorted(created_dates)
-        assert created_dates == sorted_dates
 
-    def test_anonymous_has_no_form(self, client, news_with_comments):
-        """Анонимный пользователь не видит форму комментария."""
-        news_item = news_with_comments['news']
-        url = reverse('news:detail', args=(news_item.id,))
-        response = client.get(url)
-        assert 'form' not in response.context
+def test_news_count(client, many_news):
+    """На главной странице не более 10 новостей."""
+    response = client.get(URL_HOME)
+    news_items = response.context['object_list']
+    assert news_items.count() == settings.NEWS_COUNT_ON_HOME_PAGE
 
-    def test_authorized_has_form(self, client, news_with_comments):
-        """Авторизованный пользователь видит форму комментария."""
-        news_item = news_with_comments['news']
-        author = news_with_comments['author']
-        url = reverse('news:detail', args=(news_item.id,))
-        client.force_login(author)
-        response = client.get(url)
-        assert 'form' in response.context
-        assert isinstance(response.context['form'], CommentForm)
+
+def test_news_order(client, many_news):
+    """Новости отсортированы по убыванию даты (новые сверху)."""
+    response = client.get(URL_HOME)
+    news_items = response.context['object_list']
+    dates = [news.date for news in news_items]
+    assert dates == sorted(dates, reverse=True)
+
+
+def test_comments_order(client, news, comments, detail_url):
+    """Комментарии отсортированы по времени создания (возрастание)."""
+    response = client.get(detail_url)
+    news_obj = response.context['news']
+    created_dates = [c.created for c in news_obj.comment_set.all()]
+    assert created_dates == sorted(created_dates)
+
+
+def test_anonymous_has_no_form(client, news, detail_url):
+    """Анонимный пользователь не видит форму комментария."""
+    assert 'form' not in client.get(detail_url).context
+
+
+def test_authorized_has_form(author_client, news, detail_url):
+    """Авторизованный пользователь видит форму комментария."""
+    response = author_client.get(detail_url)
+    form = response.context.get('form')
+    assert form is not None and isinstance(form, CommentForm)

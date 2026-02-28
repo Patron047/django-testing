@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.test import Client
 from django.utils import timezone
 
 from news.models import Comment, News
@@ -45,26 +46,27 @@ def comment(db, news, author):
 
 
 @pytest.fixture
-def setup_data(author, reader, news, comment):
-    """Собирает основные объекты для тестов маршрутов в словарь."""
-    return {
-        'author': author,
-        'reader': reader,
-        'news': news,
-        'comment': comment,
-    }
+def comment_for_edit(db, news, author):
+    """Создаёт комментарий для тестов редактирования и удаления."""
+    return Comment.objects.create(
+        news=news,
+        author=author,
+        text='Исходный текст',
+    )
 
 
 @pytest.fixture
-def author_client(client, author):
+def author_client(author):
     """Клиент от имени автора."""
+    client = Client()
     client.force_login(author)
     return client
 
 
 @pytest.fixture
-def reader_client(client, reader):
+def reader_client(reader):
     """Клиент от имени читателя."""
+    client = Client()
     client.force_login(reader)
     return client
 
@@ -73,49 +75,26 @@ def reader_client(client, reader):
 def many_news(db):
     """Создаёт набор новостей для проверки главной страницы."""
     today = datetime.today()
-    news_list = [
+    return News.objects.bulk_create([
         News(
             title=f'Новость {index}',
             text='Просто текст.',
             date=today - timedelta(days=index),
         )
         for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
-    ]
-    return News.objects.bulk_create(news_list)
+    ])
 
 
 @pytest.fixture
-def news_with_comments(db, author):
-    """Создаёт новость с набором комментариев."""
-    news_item = News.objects.create(
-        title='Тестовая новость',
-        text='Просто текст.'
-    )
+def comments(db, news, author):
+    """Создаёт набор комментариев для новости."""
     now = timezone.now()
-    comments = []
-    for index in range(10):
-        comment = Comment.objects.create(
-            news=news_item,
+    return Comment.objects.bulk_create([
+        Comment(
+            news=news,
             author=author,
             text=f'Tекст {index}',
+            created=now + timedelta(days=index),
         )
-        comment.created = now + timedelta(days=index)
-        comment.save()
-        comments.append(comment)
-
-    return {
-        'news': news_item,
-        'comments': comments,
-        'author': author,
-    }
-
-
-@pytest.fixture
-def home_data(many_news):
-    """Фикстура для главной страницы."""
-    return {'news_list': many_news}
-
-
-@pytest.fixture
-def detail_data(news_with_comments):
-    return news_with_comments
+        for index in range(10)
+    ])

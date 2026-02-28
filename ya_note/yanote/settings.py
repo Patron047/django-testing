@@ -87,3 +87,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = reverse_lazy('users:login')
 LOGIN_REDIRECT_URL = reverse_lazy('notes:home')
+
+# Константа для пагинации заметок.
+# Добавлена вручную, так как нигде в проекте не нашел этой константы,
+# а использование магического числа в тестах нарушает принцип DRY.
+LIMIT_NOTES_ON_PAGE = 10
