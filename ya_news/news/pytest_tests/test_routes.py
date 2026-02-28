@@ -1,91 +1,52 @@
 import pytest
 from http import HTTPStatus
-
-from django.urls import reverse
+from pytest_lazyfixture import lazy_fixture
 
 pytestmark = pytest.mark.django_db
 
-URL_HOME = reverse('news:home')
-URL_LOGIN = reverse('users:login')
-URL_SIGNUP = reverse('users:signup')
-URL_LOGOUT = reverse('users:logout')
-
-
-@pytest.fixture
-def detail_url(news):
-    return reverse('news:detail', args=(news.id,))
-
-
-@pytest.fixture
-def edit_url(comment):
-    return reverse('news:edit', args=(comment.id,))
-
-
-@pytest.fixture
-def delete_url(comment):
-    return reverse('news:delete', args=(comment.id,))
-
-
-@pytest.fixture
-def anon_redirect_urls(comment):
-    """Словарь ожидаемых редиректов для анонима."""
-    login = reverse('users:login')
-    return {
-        'edit': f"{login}?next={reverse('news:edit', args=(comment.id,))}",
-        'delete': f"{login}?next={reverse('news:delete', args=(comment.id,))}",
-    }
+STATUS_OK = HTTPStatus.OK
+STATUS_FOUND = HTTPStatus.FOUND
+STATUS_NOT_FOUND = HTTPStatus.NOT_FOUND
 
 
 @pytest.mark.parametrize(
-    'url_fixture_name,client_fixture_name,expected_status',
+    'url_fixture,client_fixture,expected_status,method_name',
     [
-        ('URL_HOME', 'client', HTTPStatus.OK),
-        ('detail_url', 'client', HTTPStatus.OK),
-        ('URL_LOGIN', 'client', HTTPStatus.OK),
-        ('URL_SIGNUP', 'client', HTTPStatus.OK),
-        ('edit_url', 'author_client', HTTPStatus.OK),
-        ('edit_url', 'reader_client', HTTPStatus.NOT_FOUND),
-        ('delete_url', 'author_client', HTTPStatus.OK),
-        ('delete_url', 'reader_client', HTTPStatus.NOT_FOUND),
+        ('home_url', lazy_fixture('client'), STATUS_OK, 'get'),
+        ('detail_url', lazy_fixture('client'), STATUS_OK, 'get'),
+        ('login_url', lazy_fixture('client'), STATUS_OK, 'get'),
+        ('signup_url', lazy_fixture('client'), STATUS_OK, 'get'),
+        ('logout_url', lazy_fixture('client'), STATUS_OK, 'post'),
+        ('edit_url', lazy_fixture('author_client'), STATUS_OK, 'get'),
+        ('edit_url', lazy_fixture('reader_client'), STATUS_NOT_FOUND, 'get'),
+        ('delete_url', lazy_fixture('author_client'), STATUS_OK, 'get'),
+        ('delete_url', lazy_fixture('reader_client'), STATUS_NOT_FOUND, 'get'),
+        ('edit_url', lazy_fixture('client'), STATUS_FOUND, 'get'),
+        ('delete_url', lazy_fixture('client'), STATUS_FOUND, 'get'),
     ],
 )
-def test_pages_availability_and_permissions(
-    request, url_fixture_name, client_fixture_name, expected_status
+def test_all_routes_status_codes(
+    request, url_fixture, client_fixture, expected_status, method_name
 ):
     """Единый тест для проверки статус-кодов всех страниц."""
-    if url_fixture_name.startswith('URL_'):
-        url = globals()[url_fixture_name]
-    else:
-        url = request.getfixturevalue(url_fixture_name)
-    client = request.getfixturevalue(client_fixture_name)
-    response = client.get(url)
+    url = request.getfixturevalue(url_fixture)
+    response = getattr(client_fixture, method_name)(url)
     assert response.status_code == expected_status
 
 
-def test_logout_page_availability(client):
-    """Страница выхода доступна анониму."""
-    response = client.get(URL_LOGOUT)
-    allowed_statuses = (
-        HTTPStatus.OK,
-        HTTPStatus.FOUND,
-        HTTPStatus.METHOD_NOT_ALLOWED,
-    )
-    assert response.status_code in allowed_statuses
-
-
 @pytest.mark.parametrize(
-    'url_fixture_name,redirect_key',
+    'url_fixture,expected_redirect_fixture',
     [
-        ('edit_url', 'edit'),
-        ('delete_url', 'delete'),
+        ('edit_url', 'redirect_edit_url'),
+        ('delete_url', 'redirect_delete_url'),
     ],
 )
-def test_anonymous_redirect_on_comment_actions(
-    request, client, url_fixture_name, redirect_key, anon_redirect_urls
+def test_anonymous_redirect_urls(
+    request, client, url_fixture, expected_redirect_fixture
 ):
-    """Аноним перенаправляется на логин при действиях с комментарием."""
-    url = request.getfixturevalue(url_fixture_name)
-    expected_redirect = anon_redirect_urls[redirect_key]
+    """Проверка конкретных URL редиректов для анонима."""
+    url = request.getfixturevalue(url_fixture)
+    expected_redirect = request.getfixturevalue(expected_redirect_fixture)
     response = client.get(url)
-    assert response.status_code == HTTPStatus.FOUND
+    assert response.status_code == STATUS_FOUND
     assert response.url == expected_redirect

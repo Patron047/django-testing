@@ -1,9 +1,10 @@
-import pytest
 from datetime import datetime, timedelta
 
+import pytest
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import Client
+from django.urls import reverse
 from django.utils import timezone
 
 from news.models import Comment, News
@@ -72,29 +73,78 @@ def reader_client(reader):
 
 
 @pytest.fixture
+def home_url():
+    return reverse('news:home')
+
+
+@pytest.fixture
+def detail_url(news):
+    return reverse('news:detail', args=(news.id,))
+
+
+@pytest.fixture
+def login_url():
+    return reverse('users:login')
+
+
+@pytest.fixture
+def signup_url():
+    return reverse('users:signup')
+
+
+@pytest.fixture
+def logout_url():
+    return reverse('users:logout')
+
+
+@pytest.fixture
+def edit_url(comment_for_edit):
+    return reverse('news:edit', args=(comment_for_edit.id,))
+
+
+@pytest.fixture
+def delete_url(comment_for_edit):
+    return reverse('news:delete', args=(comment_for_edit.id,))
+
+
+@pytest.fixture
+def target_url(news):
+    return f"{reverse('news:detail', args=(news.id,))}#comments"
+
+
+@pytest.fixture
+def redirect_edit_url(login_url, edit_url):
+    return f'{login_url}?next={edit_url}'
+
+
+@pytest.fixture
+def redirect_delete_url(login_url, delete_url):
+    return f'{login_url}?next={delete_url}'
+
+
+@pytest.fixture
 def many_news(db):
-    """Создаёт набор новостей для проверки главной страницы."""
-    today = datetime.today()
-    return News.objects.bulk_create([
+    News.objects.bulk_create(
         News(
             title=f'Новость {index}',
             text='Просто текст.',
-            date=today - timedelta(days=index),
+            date=datetime.today() - timedelta(days=index),
         )
         for index in range(settings.NEWS_COUNT_ON_HOME_PAGE + 1)
-    ])
+    )
 
 
 @pytest.fixture
 def comments(db, news, author):
-    """Создаёт набор комментариев для новости."""
     now = timezone.now()
-    return Comment.objects.bulk_create([
-        Comment(
+    result = []
+    for index in range(10):
+        comment_item = Comment.objects.create(
             news=news,
             author=author,
             text=f'Tекст {index}',
-            created=now + timedelta(days=index),
         )
-        for index in range(10)
-    ])
+        comment_item.created = now + timedelta(days=index)
+        comment_item.save(update_fields=['created'])
+        result.append(comment_item)
+    return result
