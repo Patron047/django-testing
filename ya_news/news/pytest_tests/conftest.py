@@ -42,17 +42,7 @@ def comment(db, news, author):
     return Comment.objects.create(
         news=news,
         author=author,
-        text='Текст комментария',
-    )
-
-
-@pytest.fixture
-def comment_for_edit(db, news, author):
-    """Создаёт комментарий для тестов редактирования и удаления."""
-    return Comment.objects.create(
-        news=news,
-        author=author,
-        text='Исходный текст',
+        text='Текст комментария для теста',
     )
 
 
@@ -74,56 +64,67 @@ def reader_client(reader):
 
 @pytest.fixture
 def home_url():
+    """Возвращает URL главной страницы."""
     return reverse('news:home')
 
 
 @pytest.fixture
 def detail_url(news):
+    """Возвращает URL детальной страницы новости."""
     return reverse('news:detail', args=(news.id,))
 
 
 @pytest.fixture
 def login_url():
+    """Возвращает URL страницы входа."""
     return reverse('users:login')
 
 
 @pytest.fixture
 def signup_url():
+    """Возвращает URL страницы регистрации."""
     return reverse('users:signup')
 
 
 @pytest.fixture
 def logout_url():
+    """Возвращает URL выхода из системы."""
     return reverse('users:logout')
 
 
 @pytest.fixture
-def edit_url(comment_for_edit):
-    return reverse('news:edit', args=(comment_for_edit.id,))
+def edit_url(comment):
+    """Возвращает URL редактирования комментария."""
+    return reverse('news:edit', args=(comment.id,))
 
 
 @pytest.fixture
-def delete_url(comment_for_edit):
-    return reverse('news:delete', args=(comment_for_edit.id,))
+def delete_url(comment):
+    """Возвращает URL удаления комментария."""
+    return reverse('news:delete', args=(comment.id,))
 
 
 @pytest.fixture
-def target_url(news):
-    return f"{reverse('news:detail', args=(news.id,))}#comments"
+def target_url(detail_url):
+    """Возвращает целевой URL с якорем на комментарии."""
+    return f'{detail_url}#comments'
 
 
 @pytest.fixture
 def redirect_edit_url(login_url, edit_url):
+    """Возвращает URL редиректа для редактирования."""
     return f'{login_url}?next={edit_url}'
 
 
 @pytest.fixture
 def redirect_delete_url(login_url, delete_url):
+    """Возвращает URL редиректа для удаления."""
     return f'{login_url}?next={delete_url}'
 
 
 @pytest.fixture
 def many_news(db):
+    """Создает набор новостей для проверки пагинации."""
     News.objects.bulk_create(
         News(
             title=f'Новость {index}',
@@ -136,15 +137,15 @@ def many_news(db):
 
 @pytest.fixture
 def comments(db, news, author):
+    """Создаёт набор комментариев с разными датами."""
     now = timezone.now()
-    result = []
-    for index in range(10):
-        comment_item = Comment.objects.create(
+    result = [
+        Comment.objects.create(
             news=news,
             author=author,
             text=f'Tекст {index}',
+            created=now + timedelta(days=index),
         )
-        comment_item.created = now + timedelta(days=index)
-        comment_item.save(update_fields=['created'])
-        result.append(comment_item)
+        for index in range(10)
+    ]
     return result
