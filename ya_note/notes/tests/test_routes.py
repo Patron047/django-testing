@@ -42,7 +42,10 @@ class TestRoutes(BaseTestCase):
             (self.delete_url, self.client, 'get', HTTPStatus.FOUND),
         ]
         for url, client, method, expected_code in status_cases:
-            with self.subTest(url=url, expected_code=expected_code):
+            with self.subTest(url=url,
+                              client=client,
+                              expected_code=expected_code
+                              ):
                 response = getattr(client, method)(url)
                 self.assertEqual(response.status_code, expected_code)
 
@@ -57,7 +60,7 @@ class TestRoutes(BaseTestCase):
             (self.delete_url, self.redirect_to_delete),
         ]
         for url, expected_redirect in redirect_cases:
-            with self.subTest(url=url):
+            with self.subTest(url=url, client=self.client):
                 self.assertRedirects(
                     self.client.get(url),
                     expected_redirect,

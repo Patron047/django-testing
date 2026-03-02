@@ -65,6 +65,7 @@ def test_user_cant_delete_others(
     """Пользователь не может удалить чужой комментарий."""
     response = reader_client.delete(delete_url)
     assert response.status_code == HTTPStatus.NOT_FOUND
+    assert Comment.objects.count() == 1
     updated_comment = Comment.objects.get(id=comment.id)
     assert updated_comment.text == comment.text
     assert updated_comment.news == comment.news
@@ -75,12 +76,13 @@ def test_author_can_edit(
     author_client, comment, edit_url, target_url
 ):
     """Автор может редактировать свой комментарий."""
-    edit_data = {'text': 'Обновлённый комментарий'}
-    response = author_client.post(edit_url, data=edit_data)
+    response = author_client.post(
+        edit_url, data={**FORM_DATA, 'text': 'Обновлённый комментарий'}
+    )
     assert response.status_code == HTTPStatus.FOUND
     assertRedirects(response, target_url)
     updated = Comment.objects.get(id=comment.id)
-    assert updated.text == edit_data['text']
+    assert updated.text == 'Обновлённый комментарий'
     assert updated.news == comment.news
     assert updated.author == comment.author
 
@@ -89,9 +91,9 @@ def test_user_cant_edit_others(
     reader_client, comment, edit_url
 ):
     """Пользователь не может редактировать чужой комментарий."""
-    response = reader_client.post(edit_url,
-                                  ata={'text': 'Обновлённый комментарий'}
-                                  )
+    response = reader_client.post(
+        edit_url, data={**FORM_DATA, 'text': 'Обновлённый комментарий'}
+    )
     assert response.status_code == HTTPStatus.NOT_FOUND
     updated_comment = Comment.objects.get(id=comment.id)
     assert updated_comment.text == comment.text
