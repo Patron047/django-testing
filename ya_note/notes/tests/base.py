@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase, Client
+from django.test import Client, TestCase
 from django.urls import reverse
 
 from notes.models import Note
@@ -32,25 +32,20 @@ class BaseTestCase(TestCase):
             slug='slug-0',
             author=cls.author,
         )
-        cls.notes = [cls.note]
-        cls.another_note = Note.objects.create(
-            title='Foreign Note',
-            text='Foreign Text',
-            slug='foreign-slug',
-            author=cls.reader,
-        )
         cls.form_data = {
             'title': 'New Test Title',
             'text': 'New Test Text',
             'slug': 'new-test-slug',
         }
-        cls.list_url = LIST_URL
         cls.add_url = ADD_URL
         cls.success_url = SUCCESS_URL
         cls.login_url = LOGIN_URL
-        cls.logout_url = LOGOUT_URL
-        cls.signup_url = SIGNUP_URL
-        cls.home_url = HOME_URL
         cls.detail_url = reverse('notes:detail', args=(cls.note.slug,))
         cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
         cls.delete_url = reverse('notes:delete', args=(cls.note.slug,))
+        cls.redirect_to_list = f'{LOGIN_URL}?next={LIST_URL}'
+        cls.redirect_to_add = f'{LOGIN_URL}?next={ADD_URL}'
+        cls.redirect_to_success = f'{LOGIN_URL}?next={SUCCESS_URL}'
+        cls.redirect_to_detail = f'{LOGIN_URL}?next={cls.detail_url}'
+        cls.redirect_to_edit = f'{LOGIN_URL}?next={cls.edit_url}'
+        cls.redirect_to_delete = f'{LOGIN_URL}?next={cls.delete_url}'

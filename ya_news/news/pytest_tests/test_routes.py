@@ -8,43 +8,49 @@ pytestmark = pytest.mark.django_db
 STATUS_OK = HTTPStatus.OK
 STATUS_FOUND = HTTPStatus.FOUND
 STATUS_NOT_FOUND = HTTPStatus.NOT_FOUND
-
 ANONYMOUS_CLIENT = lazy_fixture('client')
 AUTHOR_CLIENT = lazy_fixture('author_client')
 READER_CLIENT = lazy_fixture('reader_client')
+HOME_URL = lazy_fixture('home_url')
+DETAIL_URL = lazy_fixture('detail_url')
+LOGIN_URL = lazy_fixture('login_url')
+SIGNUP_URL = lazy_fixture('signup_url')
+LOGOUT_URL = lazy_fixture('logout_url')
+EDIT_URL = lazy_fixture('edit_url')
+DELETE_URL = lazy_fixture('delete_url')
+REDIRECT_EDIT_URL = lazy_fixture('redirect_edit_url')
+REDIRECT_DELETE_URL = lazy_fixture('redirect_delete_url')
 
 
 @pytest.mark.parametrize(
     'url_fixture,client_fixture,expected_status,method_name',
     [
-        ('home_url', ANONYMOUS_CLIENT, STATUS_OK, 'get'),
-        ('detail_url', ANONYMOUS_CLIENT, STATUS_OK, 'get'),
-        ('login_url', ANONYMOUS_CLIENT, STATUS_OK, 'get'),
-        ('signup_url', ANONYMOUS_CLIENT, STATUS_OK, 'get'),
-        ('logout_url', ANONYMOUS_CLIENT, STATUS_OK, 'post'),
-        ('edit_url', AUTHOR_CLIENT, STATUS_OK, 'get'),
-        ('edit_url', READER_CLIENT, STATUS_NOT_FOUND, 'get'),
-        ('delete_url', AUTHOR_CLIENT, STATUS_OK, 'get'),
-        ('delete_url', READER_CLIENT, STATUS_NOT_FOUND, 'get'),
-        ('edit_url', ANONYMOUS_CLIENT, STATUS_FOUND, 'get'),
-        ('delete_url', ANONYMOUS_CLIENT, STATUS_FOUND, 'get'),
+        (HOME_URL, ANONYMOUS_CLIENT, STATUS_OK, 'get'),
+        (DETAIL_URL, ANONYMOUS_CLIENT, STATUS_OK, 'get'),
+        (LOGIN_URL, ANONYMOUS_CLIENT, STATUS_OK, 'get'),
+        (SIGNUP_URL, ANONYMOUS_CLIENT, STATUS_OK, 'get'),
+        (LOGOUT_URL, ANONYMOUS_CLIENT, STATUS_OK, 'post'),
+        (EDIT_URL, AUTHOR_CLIENT, STATUS_OK, 'get'),
+        (EDIT_URL, READER_CLIENT, STATUS_NOT_FOUND, 'get'),
+        (DELETE_URL, AUTHOR_CLIENT, STATUS_OK, 'get'),
+        (DELETE_URL, READER_CLIENT, STATUS_NOT_FOUND, 'get'),
+        (EDIT_URL, ANONYMOUS_CLIENT, STATUS_FOUND, 'get'),
+        (DELETE_URL, ANONYMOUS_CLIENT, STATUS_FOUND, 'get'),
     ],
 )
 def test_all_routes_status_codes(
-    request, url_fixture, client_fixture, expected_status, method_name
+    url_fixture, client_fixture, expected_status, method_name
 ):
     """Единый тест для проверки статус-кодов всех страниц."""
-    response = getattr(client_fixture, method_name)(
-        request.getfixturevalue(url_fixture)
-    )
+    response = getattr(client_fixture, method_name)(url_fixture)
     assert response.status_code == expected_status
 
 
 @pytest.mark.parametrize(
     'url_fixture,expected_redirect_fixture',
     [
-        (lazy_fixture('edit_url'), lazy_fixture('redirect_edit_url')),
-        (lazy_fixture('delete_url'), lazy_fixture('redirect_delete_url')),
+        (EDIT_URL, REDIRECT_EDIT_URL),
+        (DELETE_URL, REDIRECT_DELETE_URL),
     ],
 )
 def test_anonymous_redirect_urls(

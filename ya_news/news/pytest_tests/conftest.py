@@ -139,13 +139,12 @@ def many_news(db):
 def comments(db, news, author):
     """Создаёт набор комментариев с разными датами."""
     now = timezone.now()
-    result = [
-        Comment.objects.create(
+    for index in range(10):
+        comment_item = Comment.objects.create(
             news=news,
             author=author,
             text=f'Tекст {index}',
-            created=now + timedelta(days=index),
         )
-        for index in range(10)
-    ]
-    return result
+        comment_item.created = now + timedelta(days=index)
+        comment_item.save(update_fields=['created'])
+    return list(Comment.objects.filter(news=news).order_by('created'))

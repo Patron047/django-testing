@@ -9,9 +9,8 @@ from news.models import Comment
 pytestmark = pytest.mark.django_db
 
 FORM_DATA = {'text': 'Текст тестового комментария'}
-EDIT_FORM_DATA = {'text': 'Обновлённый комментарий'}
 
-BAD_WORDTestData = [
+BAD_WORD_TEST_DATA = [
     {'text': f'Текст с плохим словом: {word}'}
     for word in BAD_WORDS
 ]
@@ -38,7 +37,7 @@ def test_user_can_create(
     assert comment.author == author
 
 
-@pytest.mark.parametrize('bad_data', BAD_WORDTestData)
+@pytest.mark.parametrize('bad_data', BAD_WORD_TEST_DATA)
 def test_bad_words_blocked(author_client, bad_data, detail_url):
     """Пользователь не может использовать стоп-слова в комментарии."""
     response = author_client.post(detail_url, data=bad_data)
@@ -68,17 +67,20 @@ def test_user_cant_delete_others(
     assert response.status_code == HTTPStatus.NOT_FOUND
     updated_comment = Comment.objects.get(id=comment.id)
     assert updated_comment.text == comment.text
+    assert updated_comment.news == comment.news
+    assert updated_comment.author == comment.author
 
 
 def test_author_can_edit(
     author_client, comment, edit_url, target_url
 ):
     """Автор может редактировать свой комментарий."""
-    response = author_client.post(edit_url, data=EDIT_FORM_DATA)
+    edit_data = {'text': 'Обновлённый комментарий'}
+    response = author_client.post(edit_url, data=edit_data)
     assert response.status_code == HTTPStatus.FOUND
     assertRedirects(response, target_url)
     updated = Comment.objects.get(id=comment.id)
-    assert updated.text == EDIT_FORM_DATA['text']
+    assert updated.text == edit_data['text']
     assert updated.news == comment.news
     assert updated.author == comment.author
 
@@ -87,8 +89,11 @@ def test_user_cant_edit_others(
     reader_client, comment, edit_url
 ):
     """Пользователь не может редактировать чужой комментарий."""
-    response = reader_client.post(edit_url, data=EDIT_FORM_DATA)
+    response = reader_client.post(edit_url,
+                                  ata={'text': 'Обновлённый комментарий'}
+                                  )
     assert response.status_code == HTTPStatus.NOT_FOUND
     updated_comment = Comment.objects.get(id=comment.id)
     assert updated_comment.text == comment.text
-    assert Comment.objects.count() == 1
+    assert updated_comment.news == comment.news
+    assert updated_comment.author == comment.author
