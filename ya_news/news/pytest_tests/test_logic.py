@@ -76,21 +76,22 @@ def test_author_can_edit(
     author_client, comment, edit_url, target_url
 ):
     """Автор может редактировать свой комментарий."""
-    FORM_DATA['text'] = 'Обновлённый комментарий'
     response = author_client.post(edit_url, data=FORM_DATA)
     assert response.status_code == HTTPStatus.FOUND
     assertRedirects(response, target_url)
     updated = Comment.objects.get(id=comment.id)
     assert updated.text == FORM_DATA['text']
+    assert updated.news == comment.news
+    assert updated.author == comment.author
 
 
 def test_user_cant_edit_others(
     reader_client, comment, edit_url
 ):
     """Пользователь не может редактировать чужой комментарий."""
-    original_text = comment.text
-    FORM_DATA['text'] = 'Обновлённый комментарий'
     response = reader_client.post(edit_url, data=FORM_DATA)
     assert response.status_code == HTTPStatus.NOT_FOUND
     updated_comment = Comment.objects.get(id=comment.id)
-    assert updated_comment.text == original_text
+    assert updated_comment.text == comment.text
+    assert updated_comment.news == comment.news
+    assert updated_comment.author == comment.author

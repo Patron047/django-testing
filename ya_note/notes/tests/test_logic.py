@@ -1,8 +1,8 @@
 from http import HTTPStatus
+
 from pytils.translit import slugify
 
 from notes.models import Note
-
 from .base import (
     ADD_URL,
     EDIT_URL,
@@ -42,12 +42,9 @@ class TestNoteLogic(BaseTestCase):
 
     def test_slug_generated_if_missing(self):
         """Slug генерируется автоматически, если не передан."""
-        data_without_slug = {
-            'title': self.form_data['title'],
-            'text': self.form_data['text'],
-        }
+        self.form_data.pop('slug')
         note_ids_before = set(Note.objects.values_list('id', flat=True))
-        response = self.author_client.post(ADD_URL, data=data_without_slug)
+        response = self.author_client.post(ADD_URL, data=self.form_data)
         self.assertRedirects(response, SUCCESS_URL)
         note_ids_after = set(Note.objects.values_list('id', flat=True))
         new_ids = note_ids_after - note_ids_before
@@ -59,16 +56,14 @@ class TestNoteLogic(BaseTestCase):
         self.assertEqual(created_note.author, self.author)
         expected_slug = slugify(self.form_data['title'])[:100]
         self.assertEqual(created_note.slug, expected_slug)
+        self.form_data['slug'] = 'new-test-slug'
 
     def test_create_note_with_duplicate_slug_fails(self):
         """Создание заметки с дублирующимся slug невозможно."""
-        duplicate_slug_data = {
-            'title': self.form_data['title'],
-            'text': self.form_data['text'],
-            'slug': self.note.slug,
-        }
+        self.form_data['slug'] = self.note.slug
         note_ids_before = set(Note.objects.values_list('id', flat=True))
-        response = self.author_client.post(ADD_URL, data=duplicate_slug_data)
+        response = self.author_client.post(ADD_URL, data=self.form_data)
+        self.form_data['slug'] = 'new-test-slug'
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertIn('slug', response.context['form'].errors)
         self.assertEqual(
@@ -97,19 +92,23 @@ class TestNoteLogic(BaseTestCase):
 
     def test_author_can_edit(self):
         """Автор может редактировать свою заметку."""
-        self.form_data['title'] = 'Edited Title'
-        self.form_data['text'] = 'Edited Text'
-        self.form_data['slug'] = 'edited-slug'
+        self.form_data.update({
+            'title': 'Edited Title',
+            'text': 'Edited Text',
+            'slug': 'edited-slug',
+        })
         response = self.author_client.post(EDIT_URL, data=self.form_data)
         self.assertRedirects(response, SUCCESS_URL)
         updated_note = Note.objects.get(id=self.note.id)
-        self.assertEqual(updated_note.title, self.form_data['title'])
-        self.assertEqual(updated_note.text, self.form_data['text'])
-        self.assertEqual(updated_note.slug, self.form_data['slug'])
+        self.assertEqual(updated_note.title, 'Edited Title')
+        self.assertEqual(updated_note.text, 'Edited Text')
+        self.assertEqual(updated_note.slug, 'edited-slug')
         self.assertEqual(updated_note.author, self.note.author)
-        self.form_data['title'] = 'Новый тестовый заголовок'
-        self.form_data['text'] = 'New Test Text'
-        self.form_data['slug'] = 'new-test-slug'
+        self.form_data.update({
+            'title': 'Новый тестовый заголовок',
+            'text': 'New Test Text',
+            'slug': 'new-test-slug',
+        })
 
     def test_user_cannot_edit_foreign_note(self):
         """Пользователь не может редактировать чужую заметку."""
