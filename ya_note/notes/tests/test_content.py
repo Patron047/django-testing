@@ -1,6 +1,6 @@
 from notes.forms import NoteForm
 
-from .base import LIST_URL, BaseTestCase
+from .base import LIST_URL, ADD_URL, EDIT_URL, BaseTestCase
 
 
 class TestNotesListContent(BaseTestCase):
@@ -10,6 +10,7 @@ class TestNotesListContent(BaseTestCase):
         """Заметка автора присутствует в списке, все поля корректны."""
         response = self.author_client.get(LIST_URL)
         notes = response.context['object_list']
+        self.assertIn(self.note, notes)
         context_note = notes.get(pk=self.note.pk)
         self.assertEqual(context_note.title, self.note.title)
         self.assertEqual(context_note.text, self.note.text)
@@ -17,15 +18,14 @@ class TestNotesListContent(BaseTestCase):
         self.assertEqual(context_note.author, self.note.author)
 
     def test_no_foreign_notes(self):
-        """Заметки другого пользователя не попадают в список."""
-        response = self.author_client.get(LIST_URL)
+        """Заметки других пользователей не попадают в список."""
+        response = self.reader_client.get(LIST_URL)
         notes = response.context['object_list']
-        self.assertIn(self.note, notes)
-        self.assertEqual(len(notes), 1)
+        self.assertEqual(len(notes), 0)
 
     def test_forms_in_context(self):
         """Формы передаются на страницы создания и редактирования."""
-        urls = [self.add_url, self.edit_url]
+        urls = [ADD_URL, EDIT_URL]
         for url in urls:
             with self.subTest(url=url):
                 response = self.author_client.get(url)

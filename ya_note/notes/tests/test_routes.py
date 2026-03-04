@@ -2,10 +2,19 @@ from http import HTTPStatus
 
 from .base import (
     ADD_URL,
+    DELETE_URL,
+    DETAIL_URL,
+    EDIT_URL,
     HOME_URL,
     LIST_URL,
     LOGIN_URL,
     LOGOUT_URL,
+    REDIRECT_TO_ADD,
+    REDIRECT_TO_DELETE,
+    REDIRECT_TO_DETAIL,
+    REDIRECT_TO_EDIT,
+    REDIRECT_TO_LIST,
+    REDIRECT_TO_SUCCESS,
     SIGNUP_URL,
     SUCCESS_URL,
     BaseTestCase,
@@ -28,18 +37,18 @@ class TestRoutes(BaseTestCase):
             (LIST_URL, self.author_client, 'get', HTTPStatus.OK),
             (ADD_URL, self.author_client, 'get', HTTPStatus.OK),
             (SUCCESS_URL, self.author_client, 'get', HTTPStatus.OK),
-            (self.detail_url, self.author_client, 'get', HTTPStatus.OK),
-            (self.edit_url, self.author_client, 'get', HTTPStatus.OK),
-            (self.delete_url, self.author_client, 'get', HTTPStatus.OK),
-            (self.detail_url, self.reader_client, 'get', HTTPStatus.NOT_FOUND),
-            (self.edit_url, self.reader_client, 'get', HTTPStatus.NOT_FOUND),
-            (self.delete_url, self.reader_client, 'get', HTTPStatus.NOT_FOUND),
+            (DETAIL_URL, self.author_client, 'get', HTTPStatus.OK),
+            (EDIT_URL, self.author_client, 'get', HTTPStatus.OK),
+            (DELETE_URL, self.author_client, 'get', HTTPStatus.OK),
+            (DETAIL_URL, self.reader_client, 'get', HTTPStatus.NOT_FOUND),
+            (EDIT_URL, self.reader_client, 'get', HTTPStatus.NOT_FOUND),
+            (DELETE_URL, self.reader_client, 'get', HTTPStatus.NOT_FOUND),
             (LIST_URL, self.client, 'get', HTTPStatus.FOUND),
             (ADD_URL, self.client, 'get', HTTPStatus.FOUND),
             (SUCCESS_URL, self.client, 'get', HTTPStatus.FOUND),
-            (self.detail_url, self.client, 'get', HTTPStatus.FOUND),
-            (self.edit_url, self.client, 'get', HTTPStatus.FOUND),
-            (self.delete_url, self.client, 'get', HTTPStatus.FOUND),
+            (DETAIL_URL, self.client, 'get', HTTPStatus.FOUND),
+            (EDIT_URL, self.client, 'get', HTTPStatus.FOUND),
+            (DELETE_URL, self.client, 'get', HTTPStatus.FOUND),
         ]
         for url, client, method, expected_code in status_cases:
             with self.subTest(url=url,
@@ -52,12 +61,12 @@ class TestRoutes(BaseTestCase):
     def test_redirects_for_anonymous(self):
         """Перенаправления анонимного пользователя на страницу входа."""
         redirect_cases = [
-            (LIST_URL, self.redirect_to_list),
-            (ADD_URL, self.redirect_to_add),
-            (SUCCESS_URL, self.redirect_to_success),
-            (self.detail_url, self.redirect_to_detail),
-            (self.edit_url, self.redirect_to_edit),
-            (self.delete_url, self.redirect_to_delete),
+            (LIST_URL, REDIRECT_TO_LIST),
+            (ADD_URL, REDIRECT_TO_ADD),
+            (SUCCESS_URL, REDIRECT_TO_SUCCESS),
+            (DETAIL_URL, REDIRECT_TO_DETAIL),
+            (EDIT_URL, REDIRECT_TO_EDIT),
+            (DELETE_URL, REDIRECT_TO_DELETE),
         ]
         for url, expected_redirect in redirect_cases:
             with self.subTest(url=url, client=self.client):
