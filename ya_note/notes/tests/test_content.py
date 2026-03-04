@@ -21,7 +21,7 @@ class TestNotesListContent(BaseTestCase):
         """Заметки других пользователей не попадают в список."""
         response = self.reader_client.get(LIST_URL)
         notes = response.context['object_list']
-        self.assertEqual(len(notes), 0)
+        self.assertNotIn(self.note, notes)
 
     def test_forms_in_context(self):
         """Формы передаются на страницы создания и редактирования."""
