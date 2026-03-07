@@ -56,12 +56,14 @@ class TestNoteLogic(BaseTestCase):
         self.assertEqual(created_note.author, self.author)
         expected_slug = slugify(self.form_data['title'])[:100]
         self.assertEqual(created_note.slug, expected_slug)
+        self.form_data['slug'] = 'new-test-slug'
 
     def test_create_note_with_duplicate_slug_fails(self):
         """Создание заметки с дублирующимся slug невозможно."""
-        note_ids_before = set(Note.objects.values_list('id', flat=True))
         self.form_data['slug'] = self.note.slug
+        note_ids_before = set(Note.objects.values_list('id', flat=True))
         response = self.author_client.post(ADD_URL, data=self.form_data)
+        self.form_data['slug'] = 'new-test-slug'
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertIn('slug', response.context['form'].errors)
         self.assertEqual(
@@ -90,11 +92,9 @@ class TestNoteLogic(BaseTestCase):
 
     def test_author_can_edit(self):
         """Автор может редактировать свою заметку."""
-        self.form_data.update({
-            'title': 'Edited Title',
-            'text': 'Edited Text',
-            'slug': 'edited-slug',
-        })
+        self.form_data['title'] = 'Edited Title'
+        self.form_data['text'] = 'Edited Text'
+        self.form_data['slug'] = 'edited-slug'
         response = self.author_client.post(EDIT_URL, data=self.form_data)
         self.assertRedirects(response, SUCCESS_URL)
         updated_note = Note.objects.get(id=self.note.id)
@@ -102,6 +102,9 @@ class TestNoteLogic(BaseTestCase):
         self.assertEqual(updated_note.text, self.form_data['text'])
         self.assertEqual(updated_note.slug, self.form_data['slug'])
         self.assertEqual(updated_note.author, self.note.author)
+        self.form_data['title'] = 'Новый тестовый заголовок'
+        self.form_data['text'] = 'New Test Text'
+        self.form_data['slug'] = 'new-test-slug'
 
     def test_user_cannot_edit_foreign_note(self):
         """Пользователь не может редактировать чужую заметку."""
