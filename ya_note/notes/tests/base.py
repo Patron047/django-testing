@@ -47,7 +47,7 @@ class BaseTestCase(TestCase):
             author=cls.author,
         )
         cls.form_data = {
-            'title': 'Новый тестовый заголовок',
-            'text': 'New Test Text',
-            'slug': 'new-test-slug',
+            'title': 'Edited Title',
+            'text': 'Edited Text',
+            'slug': 'edited-slug',
         }
